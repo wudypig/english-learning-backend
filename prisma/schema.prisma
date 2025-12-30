@@ -1,0 +1,50 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String       @id @default(uuid())
+  email          String       @unique
+  password       String
+  nickname       String?
+  avatar         String?
+  role           String       @default("user") // "user" or "admin"
+  difficultyLevel String      @default("9th") // "7th", "8th", "9th", "10th", "11th", "12th"
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  
+  testRecords    TestRecord[]
+  usageLimits    UsageLimit[]
+}
+
+model UsageLimit {
+  id                String   @id @default(uuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id])
+  testType          String   // "essay" or "reading"
+  remainingAttempts Int
+  lastReset         DateTime @default(now())
+
+  @@unique([userId, testType])
+}
+
+model TestRecord {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String   // "essay" or "reading"
+  content   String   // The article content
+  questions String?  // JSON string for reading test questions
+  answers   String?  // JSON string for user answers (if reading) or essay content (if essay)
+  score     Float
+  feedback  String?  // For essay
+  createdAt DateTime @default(now())
+}
