@@ -13,6 +13,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3010; // Changed port to 3010 to avoid conflict with Vite (3000 often used) or I can set Vite to 5173 (default)
 
+// Trust proxy - required when behind Cloud Run or other reverse proxies
+app.set('trust proxy', true);
+
 app.use(cors());
 app.use(express.json());
 app.use(requestLogger); // Log all API requests

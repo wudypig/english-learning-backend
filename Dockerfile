@@ -1,6 +1,11 @@
-FROM node:18-alpine
+FROM node:18-slim
 
 WORKDIR /app
+
+# Install OpenSSL and other dependencies required by Prisma
+RUN apt-get update -y && \
+    apt-get install -y openssl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy package files
 COPY package*.json ./
