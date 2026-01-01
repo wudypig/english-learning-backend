@@ -35,8 +35,14 @@ docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${IMAGE_NAME}:l
 
 echo -e "${GREEN}✓ Image pushed successfully${NC}\n"
 
-# Step 3: Deploy to Cloud Run
-echo -e "${YELLOW}🌐 Step 3: Deploying to Cloud Run...${NC}"
+# Step 3: Run Database Migrations
+echo -e "${YELLOW}🗄️  Step 3: Running database migrations...${NC}"
+gcloud run jobs execute migrate-db --region=${REGION} --wait
+
+echo -e "${GREEN}✓ Database migrations complete${NC}\n"
+
+# Step 4: Deploy to Cloud Run
+echo -e "${YELLOW}🌐 Step 4: Deploying to Cloud Run...${NC}"
 gcloud run deploy ${SERVICE_NAME} \
   --image=${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${IMAGE_NAME}:latest \
   --platform=managed \
