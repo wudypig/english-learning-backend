@@ -7,7 +7,6 @@ const router = Router();
 
 // Get Essay Topic
 router.post('/essay/generate', authenticateToken, async (req: AuthRequest, res) => {
-    // Check limits logic here if needed, or in a separate middleware
     const userId = req.user?.userId;
 
     if (!userId) {
@@ -15,13 +14,30 @@ router.post('/essay/generate', authenticateToken, async (req: AuthRequest, res) 
     }
 
     try {
+        // Check if user has remaining attempts
+        const limit = await prisma.usageLimit.findUnique({
+            where: {
+                userId_testType: {
+                    userId,
+                    testType: 'essay'
+                }
+            }
+        });
+
+        // -1 means unlimited, 0 or less (except -1) means no attempts
+        if (!limit || (limit.remainingAttempts <= 0 && limit.remainingAttempts !== -1)) {
+            return res.status(403).json({
+                error: 'No remaining attempts for essay writing. Please contact admin to increase your limit.'
+            });
+        }
+
         // Fetch user's difficulty level
         const user = await prisma.user.findUnique({
             where: { id: userId },
             select: { difficultyLevel: true }
         });
 
-        const level = user?.difficultyLevel || '9th';
+        const level = user?.difficultyLevel || '7th';
         const article = await generateContent(
             "Write a short interesting article (about 200-300 words) suitable for English learners. Topics can be technology, culture, nature, etc. Just return the article text.",
             level
@@ -41,13 +57,30 @@ router.post('/reading/generate', authenticateToken, async (req: AuthRequest, res
     }
 
     try {
+        // Check if user has remaining attempts
+        const limit = await prisma.usageLimit.findUnique({
+            where: {
+                userId_testType: {
+                    userId,
+                    testType: 'reading'
+                }
+            }
+        });
+
+        // -1 means unlimited, 0 or less (except -1) means no attempts
+        if (!limit || (limit.remainingAttempts <= 0 && limit.remainingAttempts !== -1)) {
+            return res.status(403).json({
+                error: 'No remaining attempts for reading test. Please contact admin to increase your limit.'
+            });
+        }
+
         // Fetch user's difficulty level
         const user = await prisma.user.findUnique({
             where: { id: userId },
             select: { difficultyLevel: true }
         });
 
-        const level = user?.difficultyLevel || '9th';
+        const level = user?.difficultyLevel || '7th';
         const prompt = `Generate a reading comprehension test. 
         1. A comprehensive article (300-400 words).
         2. 5 multiple choice questions based on the article.

@@ -11,6 +11,7 @@ export const checkAndDecrementLimit = async (userId: string, type: 'essay' | 're
     // I'll create a default limit on registration (handled in auth or lazily here).
 
     // Let's handle lazily: if no record, create with default 1.
+    // Special case: -1 means unlimited attempts
     return await prisma.$transaction(async (tx) => {
         let limit = await tx.usageLimit.findUnique({
             where: {
@@ -27,9 +28,14 @@ export const checkAndDecrementLimit = async (userId: string, type: 'essay' | 're
                 data: {
                     userId,
                     testType: type,
-                    remainingAttempts: 3 // Default 3 for testing
+                    remainingAttempts: 1 // Default 1 attempt
                 }
             });
+        }
+
+        // -1 means unlimited attempts, always allow
+        if (limit.remainingAttempts === -1) {
+            return true;
         }
 
         if (limit.remainingAttempts > 0) {
