@@ -19,11 +19,15 @@ app.set('trust proxy', true);
 
 app.use(cors({
     origin: [
-        'http://localhost:5173',           // Local dev
+        'http://localhost:5173',           // Client dev
+        'http://localhost:5174',           // Admin dev
         'https://writenest.net',           // Custom domain
         'https://www.writenest.net',       // WWW subdomain
+        'https://admin.writenest.net',     // Admin custom domain
         'https://english-learning-frontend.web.app',        // Firebase default
-        'https://english-learning-frontend.firebaseapp.com' // Firebase secondary
+        'https://english-learning-frontend.firebaseapp.com', // Firebase secondary
+        'https://english-learning-admin.web.app',            // Admin Firebase default
+        'https://english-learning-admin.firebaseapp.com'     // Admin Firebase secondary
     ],
     credentials: true
 }));

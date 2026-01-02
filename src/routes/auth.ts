@@ -39,17 +39,79 @@ router.post('/register', async (req, res) => {
 
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) return res.status(400).json({ error: 'User not found' });
+    try {
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+        const validPassword = await bcrypt.compare(password, user.password);
+        if (!validPassword) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+        const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET as string, { expiresIn: '24h' });
+        res.json({ token, user: { id: user.id, email: user.email, nickname: user.nickname, role: user.role } });
+    } catch (error) {
+        res.status(500).json({ error: 'Login failed' });
+    }
+});
 
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) return res.status(400).json({ error: 'Invalid password' });
+// Admin-only login endpoint
+router.post('/admin/login', async (req, res) => {
+    const { email, password } = req.body;
 
-    const token = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET as string, {
-        expiresIn: '24h',
-    });
+    try {
+        const user = await prisma.user.findUnique({
+            where: { email },
+            select: {
+                id: true,
+                email: true,
+                password: true,
+                nickname: true,
+                role: true,
+                isActive: true
+            }
+        });
 
-    res.json({ token, user: { id: user.id, email: user.email, nickname: user.nickname, role: user.role } });
+        if (!user) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        // Verify password
+        const validPassword = await bcrypt.compare(password, user.password);
+        if (!validPassword) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        // Check if user is admin
+        if (user.role !== 'admin') {
+            return res.status(403).json({ error: 'Access denied. Admin credentials required.' });
+        }
+
+        // Check if account is active
+        if (!user.isActive) {
+            return res.status(403).json({ error: 'Account is disabled' });
+        }
+
+        // Generate JWT
+        const token = jwt.sign(
+            { userId: user.id, role: user.role },
+            process.env.JWT_SECRET as string,
+            { expiresIn: '24h' }
+        );
+
+        res.json({
+            token,
+            user: {
+                id: user.id,
+                email: user.email,
+                nickname: user.nickname,
+                role: user.role,
+                isActive: user.isActive
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Admin login failed' });
+    }
 });
 
 export default router;
