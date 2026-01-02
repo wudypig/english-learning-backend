@@ -5,6 +5,7 @@ import authRoutes from './routes/auth';
 import contentRoutes from './routes/content';
 import submitRoutes from './routes/submit';
 import userRoutes from './routes/user';
+import adminRoutes from './routes/admin';
 import { requestLogger } from './middleware/logger';
 import { generalLimiter, authLimiter, contentLimiter } from './middleware/rateLimit';
 
@@ -33,6 +34,7 @@ app.use('/auth', authLimiter, authRoutes);
 app.use('/content', contentLimiter, contentRoutes);
 app.use('/submit', submitRoutes);
 app.use('/user', userRoutes);
+app.use('/admin', adminRoutes);
 
 app.get('/', (req, res) => {
     res.send('English Learning Service API');
