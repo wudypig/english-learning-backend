@@ -20,6 +20,8 @@ app.set('trust proxy', true);
 app.use(cors({
     origin: [
         'http://localhost:5173',           // Local dev
+        'https://writenest.net',           // Custom domain
+        'https://www.writenest.net',       // WWW subdomain
         'https://english-learning-frontend.web.app',        // Firebase default
         'https://english-learning-frontend.firebaseapp.com' // Firebase secondary
     ],
