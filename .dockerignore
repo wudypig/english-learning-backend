@@ -1,0 +1,13 @@
+node_modules
+npm-debug.log
+.env
+.env.*
+dist
+*.db
+*.db-journal
+prisma/migrations_sqlite_backup
+.DS_Store
+README.md
+*.md
+.git
+.gitignore
