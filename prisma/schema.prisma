@@ -17,7 +17,7 @@ model User {
   nickname       String?
   avatar         String?
   role           String       @default("user") // "user" or "admin"
-  difficultyLevel String      @default("9th") // "7th", "8th", "9th", "10th", "11th", "12th"
+  difficultyLevel String      @default("7th") // "7th", "8th", "9th", "10th", "11th", "12th"
   isActive       Boolean      @default(true)  // Account active status
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt

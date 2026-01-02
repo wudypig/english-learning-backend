@@ -9,13 +9,28 @@ router.post('/register', async (req, res) => {
     const { email, password, nickname } = req.body;
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Create user with initial usage limits
         const user = await prisma.user.create({
             data: {
                 email,
                 password: hashedPassword,
                 nickname: nickname || email.split('@')[0],
+                usageLimits: {
+                    create: [
+                        {
+                            testType: 'essay',
+                            remainingAttempts: 1
+                        },
+                        {
+                            testType: 'reading',
+                            remainingAttempts: 1
+                        }
+                    ]
+                }
             },
         });
+
         res.json({ message: 'User created', userId: user.id });
     } catch (error) {
         res.status(400).json({ error: 'User already exists or invalid data' });
