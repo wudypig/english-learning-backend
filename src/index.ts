@@ -16,7 +16,14 @@ const PORT = process.env.PORT || 3010; // Changed port to 3010 to avoid conflict
 // Trust proxy - required when behind Cloud Run or other reverse proxies
 app.set('trust proxy', true);
 
-app.use(cors());
+app.use(cors({
+    origin: [
+        'http://localhost:5173',           // Local dev
+        'https://english-learning-frontend.web.app',        // Firebase default
+        'https://english-learning-frontend.firebaseapp.com' // Firebase secondary
+    ],
+    credentials: true
+}));
 app.use(express.json());
 app.use(requestLogger); // Log all API requests
 app.use(generalLimiter); // Apply general rate limiting to all routes
