@@ -26,8 +26,8 @@ app.use(cors({
         'https://admin.writenest.net',     // Admin custom domain
         'https://english-learning-frontend.web.app',        // Firebase default
         'https://english-learning-frontend.firebaseapp.com', // Firebase secondary
-        'https://english-learning-admin.web.app',            // Admin Firebase default
-        'https://english-learning-admin.firebaseapp.com'     // Admin Firebase secondary
+        'https://writenest-admin.web.app',            // Admin Firebase default
+        'https://writenest-admin.firebaseapp.com'     // Admin Firebase secondary
     ],
     credentials: true
 }));
