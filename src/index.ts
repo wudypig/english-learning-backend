@@ -15,7 +15,9 @@ const app = express();
 const PORT = process.env.PORT || 3010; // Changed port to 3010 to avoid conflict with Vite (3000 often used) or I can set Vite to 5173 (default)
 
 // Trust proxy - required when behind Cloud Run or other reverse proxies
-app.set('trust proxy', true);
+// Cloud Run uses 1 proxy hop, so we trust the first proxy
+// This prevents IP spoofing while allowing rate limiting to work correctly
+app.set('trust proxy', 1);
 
 app.use(cors({
     origin: [

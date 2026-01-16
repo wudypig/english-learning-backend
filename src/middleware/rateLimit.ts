@@ -10,6 +10,8 @@ export const authLimiter = rateLimit({
     },
     standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
     legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+    // Skip the trust proxy validation since we've properly configured it in index.ts
+    validate: { trustProxy: false },
     handler: (req, res) => {
         console.log(`[Rate Limit] Auth limit exceeded for IP: ${req.ip}`);
         res.status(429).json({
@@ -28,6 +30,8 @@ export const contentLimiter = rateLimit({
     },
     standardHeaders: true,
     legacyHeaders: false,
+    // Skip the trust proxy validation since we've properly configured it in index.ts
+    validate: { trustProxy: false },
     handler: (req, res) => {
         console.log(`[Rate Limit] Content generation limit exceeded for IP: ${req.ip}`);
         res.status(429).json({
@@ -46,6 +50,8 @@ export const generalLimiter = rateLimit({
     },
     standardHeaders: true,
     legacyHeaders: false,
+    // Skip the trust proxy validation since we've properly configured it in index.ts
+    validate: { trustProxy: false },
     handler: (req, res) => {
         console.log(`[Rate Limit] General limit exceeded for IP: ${req.ip}`);
         res.status(429).json({
