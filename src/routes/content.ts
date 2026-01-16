@@ -66,9 +66,33 @@ Just return the article text without any title or extra formatting.`;
         await saveRecentTopic(userId, topicSelection.category, topicSelection.topic);
 
         res.json({ article });
-    } catch (e) {
+    } catch (e: any) {
         console.error('Essay generation error:', e);
-        res.status(500).json({ error: "Failed to generate essay content" });
+
+        // Extract user-friendly error message
+        const errorMessage = e?.message || "Failed to generate essay content";
+
+        // Check if it's a rate limit error
+        if (errorMessage.includes("API_RATE_LIMIT")) {
+            return res.status(429).json({
+                error: "Too many content generation requests. The API has rate limits. Please wait a few minutes and try again.",
+                type: "RATE_LIMIT"
+            });
+        }
+
+        // Check if it's an auth error
+        if (errorMessage.includes("API_AUTH_ERROR")) {
+            return res.status(500).json({
+                error: "There is a configuration issue with the API. Please contact support.",
+                type: "AUTH_ERROR"
+            });
+        }
+
+        // Generic error
+        res.status(500).json({
+            error: errorMessage.replace(/^API_[A-Z_]+:\s*/, ''), // Remove error prefix for cleaner message
+            type: "GENERATION_ERROR"
+        });
     }
 });
 
@@ -114,8 +138,33 @@ router.post('/reading/generate', authenticateToken, async (req: AuthRequest, res
         `;
         const testContent = await generateJSON(prompt, level);
         res.json(testContent);
-    } catch (e) {
-        res.status(500).json({ error: "Failed to generate reading test" });
+    } catch (e: any) {
+        console.error('Reading test generation error:', e);
+
+        // Extract user-friendly error message
+        const errorMessage = e?.message || "Failed to generate reading test";
+
+        // Check if it's a rate limit error
+        if (errorMessage.includes("API_RATE_LIMIT")) {
+            return res.status(429).json({
+                error: "Too many content generation requests. The API has rate limits. Please wait a few minutes and try again.",
+                type: "RATE_LIMIT"
+            });
+        }
+
+        // Check if it's an auth error
+        if (errorMessage.includes("API_AUTH_ERROR")) {
+            return res.status(500).json({
+                error: "There is a configuration issue with the API. Please contact support.",
+                type: "AUTH_ERROR"
+            });
+        }
+
+        // Generic error
+        res.status(500).json({
+            error: errorMessage.replace(/^API_[A-Z_]+:\s*/, ''), // Remove error prefix for cleaner message
+            type: "GENERATION_ERROR"
+        });
     }
 });
 

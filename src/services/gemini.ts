@@ -24,9 +24,32 @@ export const generateContent = async (prompt: string, level?: string, temperatur
 
         const response = await result.response;
         return response.text();
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error generating content:", error);
-        throw new Error("Failed to generate content");
+
+        // Check for specific error types and provide helpful messages
+        const errorMessage = error?.message || error?.toString() || "";
+
+        // Rate limit / quota errors
+        if (errorMessage.includes("RESOURCE_EXHAUSTED") ||
+            errorMessage.includes("quota") ||
+            errorMessage.includes("rate limit") ||
+            errorMessage.toLowerCase().includes("too many requests")) {
+            throw new Error("API_RATE_LIMIT: Too many content generation requests. Please try again in a few minutes.");
+        }
+
+        // Permission/auth errors
+        if (errorMessage.includes("PERMISSION_DENIED") || errorMessage.includes("API key")) {
+            throw new Error("API_AUTH_ERROR: There is an authentication issue with the API key.");
+        }
+
+        // Model errors
+        if (errorMessage.includes("INVALID_ARGUMENT")) {
+            throw new Error("API_INVALID_REQUEST: The request format was invalid.");
+        }
+
+        // Generic error with original message if available
+        throw new Error(`Failed to generate content: ${errorMessage || "Unknown error"}`);
     }
 };
 
@@ -50,8 +73,36 @@ export const generateJSON = async (prompt: string, level?: string, temperature: 
         // Clean up potential markdown code blocks
         const cleanText = text.replace(/```json/g, "").replace(/```/g, "").trim();
         return JSON.parse(cleanText);
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error generating JSON:", error);
-        throw new Error("Failed to generate JSON");
+
+        // Check for specific error types and provide helpful messages
+        const errorMessage = error?.message || error?.toString() || "";
+
+        // Rate limit / quota errors
+        if (errorMessage.includes("RESOURCE_EXHAUSTED") ||
+            errorMessage.includes("quota") ||
+            errorMessage.includes("rate limit") ||
+            errorMessage.toLowerCase().includes("too many requests")) {
+            throw new Error("API_RATE_LIMIT: Too many content generation requests. Please try again in a few minutes.");
+        }
+
+        // Permission/auth errors
+        if (errorMessage.includes("PERMISSION_DENIED") || errorMessage.includes("API key")) {
+            throw new Error("API_AUTH_ERROR: There is an authentication issue with the API key.");
+        }
+
+        // Model errors
+        if (errorMessage.includes("INVALID_ARGUMENT")) {
+            throw new Error("API_INVALID_REQUEST: The request format was invalid.");
+        }
+
+        // JSON parsing errors
+        if (error instanceof SyntaxError) {
+            throw new Error("Failed to parse JSON response from API");
+        }
+
+        // Generic error with original message if available
+        throw new Error(`Failed to generate JSON: ${errorMessage || "Unknown error"}`);
     }
 }
