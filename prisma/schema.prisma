@@ -24,6 +24,7 @@ model User {
   
   testRecords    TestRecord[]
   usageLimits    UsageLimit[]
+  recentTopics   RecentTopic[]
 }
 
 model UsageLimit {
@@ -48,4 +49,15 @@ model TestRecord {
   score     Float
   feedback  String?  // For essay
   createdAt DateTime @default(now())
+}
+
+model RecentTopic {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic     String
+  category  String
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
 }

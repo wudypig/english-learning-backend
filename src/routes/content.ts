@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { generateContent, generateJSON } from '../services/gemini';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { prisma } from '../utils/prisma';
+import { selectRandomTopic, saveRecentTopic, cleanupOldTopics } from '../utils/topicGenerator';
 
 const router = Router();
 
@@ -38,12 +39,35 @@ router.post('/essay/generate', authenticateToken, async (req: AuthRequest, res) 
         });
 
         const level = user?.difficultyLevel || '7th';
+
+        // Clean up old topics (async, non-blocking)
+        cleanupOldTopics().catch(err => console.error('Failed to cleanup old topics:', err));
+
+        // Select a random topic with variety constraints
+        const topicSelection = await selectRandomTopic(userId);
+
+        // Construct enhanced prompt with specific topic, style, and perspective
+        const enhancedPrompt = `Write a ${topicSelection.style} article from ${topicSelection.perspective} about "${topicSelection.topic}" in the category of ${topicSelection.category}.
+
+The article should be 200-300 words, engaging, and suitable for English learners.
+Use creative examples, vivid descriptions, and unique angles to make the content fresh and interesting.
+Avoid clichés and generic statements - make this article stand out with original insights and compelling storytelling.
+
+Just return the article text without any title or extra formatting.`;
+
+        // Generate content with increased temperature for more creativity (1.3)
         const article = await generateContent(
-            "Write a short interesting article (about 200-300 words) suitable for English learners. Topics can be technology, culture, nature, etc. Just return the article text.",
-            level
+            enhancedPrompt,
+            level,
+            1.3  // Higher temperature = more creative and diverse outputs
         );
+
+        // Save the topic to recent topics for future avoidance
+        await saveRecentTopic(userId, topicSelection.category, topicSelection.topic);
+
         res.json({ article });
     } catch (e) {
+        console.error('Essay generation error:', e);
         res.status(500).json({ error: "Failed to generate essay content" });
     }
 });
