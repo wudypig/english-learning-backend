@@ -22,9 +22,10 @@ model User {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   
-  testRecords    TestRecord[]
-  usageLimits    UsageLimit[]
-  recentTopics   RecentTopic[]
+  testRecords     TestRecord[]
+  usageLimits     UsageLimit[]
+  recentTopics    RecentTopic[]
+  privacySettings UserPrivacySettings?
 }
 
 model UsageLimit {
@@ -60,4 +61,14 @@ model RecentTopic {
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
+}
+
+model UserPrivacySettings {
+  id                    String   @id @default(uuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dashboardVisibility   String   @default("private") // "private" or "public"
+  activitiesVisibility  String   @default("private") // "private" or "public"
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 }
