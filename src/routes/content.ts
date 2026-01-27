@@ -15,15 +15,23 @@ router.post('/essay/generate', authenticateToken, async (req: AuthRequest, res) 
     }
 
     try {
-        // Check if user has remaining attempts
-        const limit = await prisma.usageLimit.findUnique({
-            where: {
-                userId_testType: {
-                    userId,
-                    testType: 'essay'
+        // Fetch user with usage limits and difficulty level in one query
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                difficultyLevel: true,
+                usageLimits: {
+                    where: { testType: 'essay' }
                 }
             }
         });
+
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Check if user has remaining attempts
+        const limit = user.usageLimits[0]; // Get essay limit from relation
 
         // -1 means unlimited, 0 or less (except -1) means no attempts
         if (!limit || (limit.remainingAttempts <= 0 && limit.remainingAttempts !== -1)) {
@@ -32,13 +40,7 @@ router.post('/essay/generate', authenticateToken, async (req: AuthRequest, res) 
             });
         }
 
-        // Fetch user's difficulty level
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-            select: { difficultyLevel: true }
-        });
-
-        const level = user?.difficultyLevel || '7th';
+        const level = user.difficultyLevel || '7th';
 
         // Clean up old topics (async, non-blocking)
         cleanupOldTopics().catch(err => console.error('Failed to cleanup old topics:', err));
@@ -105,15 +107,23 @@ router.post('/reading/generate', authenticateToken, async (req: AuthRequest, res
     }
 
     try {
-        // Check if user has remaining attempts
-        const limit = await prisma.usageLimit.findUnique({
-            where: {
-                userId_testType: {
-                    userId,
-                    testType: 'reading'
+        // Fetch user with usage limits and difficulty level in one query
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                difficultyLevel: true,
+                usageLimits: {
+                    where: { testType: 'reading' }
                 }
             }
         });
+
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Check if user has remaining attempts
+        const limit = user.usageLimits[0]; // Get reading limit from relation
 
         // -1 means unlimited, 0 or less (except -1) means no attempts
         if (!limit || (limit.remainingAttempts <= 0 && limit.remainingAttempts !== -1)) {
@@ -122,13 +132,7 @@ router.post('/reading/generate', authenticateToken, async (req: AuthRequest, res
             });
         }
 
-        // Fetch user's difficulty level
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-            select: { difficultyLevel: true }
-        });
-
-        const level = user?.difficultyLevel || '7th';
+        const level = user.difficultyLevel || '7th';
         const prompt = `Generate a reading comprehension test. 
         1. A comprehensive article (300-400 words).
         2. 5 multiple choice questions based on the article.
