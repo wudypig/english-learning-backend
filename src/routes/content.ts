@@ -48,24 +48,28 @@ router.post('/essay/generate', authenticateToken, async (req: AuthRequest, res) 
         // Select a random topic with variety constraints
         const topicSelection = await selectRandomTopic(userId);
 
-        // Construct enhanced prompt with specific topic, style, and perspective
-        const enhancedPrompt = `Write a ${topicSelection.style} article from ${topicSelection.perspective} about "${topicSelection.topic}" in the category of ${topicSelection.category}.
+        const enhancedPrompt = `Write a ${topicSelection.style} article about "${topicSelection.topic}" (category: ${topicSelection.category}).
 
-The article should be 200-300 words, engaging, and suitable for English learners.
-Use creative examples, vivid descriptions, and unique angles to make the content fresh and interesting.
-Avoid clichés and generic statements - make this article stand out with original insights and compelling storytelling.
+Narrative point of view: ${topicSelection.perspective}.
+Specific angle: ${topicSelection.hook}.
 
-Just return the article text without any title or extra formatting.`;
+Requirements:
+- 200–300 words
+- Open with a vivid scene, question, or striking fact — NOT a generic statement like "X is important in today's world"
+- Use at least one concrete example, real place, or named character to ground the content
+- Do not start with a definition or broad overview
+- Appropriate for an English learner at ${level} grade level
 
-        // Generate content with increased temperature for more creativity (1.3)
+Return only the article body. No title. No extra formatting.`;
+
         const article = await generateContent(
             enhancedPrompt,
             level,
-            1.3  // Higher temperature = more creative and diverse outputs
+            1.3
         );
 
-        // Save the topic to recent topics for future avoidance
-        await saveRecentTopic(userId, topicSelection.category, topicSelection.topic);
+        saveRecentTopic(userId, topicSelection.category, topicSelection.topic, topicSelection.style, topicSelection.perspective)
+            .catch(err => console.error('Failed to save recent topic:', err));
 
         res.json({ article });
     } catch (e: any) {
@@ -133,14 +137,35 @@ router.post('/reading/generate', authenticateToken, async (req: AuthRequest, res
         }
 
         const level = user.difficultyLevel || '7th';
-        const prompt = `Generate a reading comprehension test. 
-        1. A comprehensive article (300-400 words).
-        2. 5 multiple choice questions based on the article.
-        3. Each question should have 4 options and 1 correct answer.
-        
-        Output format: JSON object with keys: "article" (string), "questions" (array of objects { "id": number, "text": string, "options": string[], "correctOptionIndex": number }).
-        `;
+
+        cleanupOldTopics().catch(err => console.error('Failed to cleanup old topics:', err));
+
+        const topicSelection = await selectRandomTopic(userId);
+
+        const prompt = `Generate a reading comprehension test on the topic: "${topicSelection.topic}" (category: ${topicSelection.category}).
+
+Article requirements:
+- Writing style: ${topicSelection.style}
+- Narrative point of view: ${topicSelection.perspective}
+- Specific angle: ${topicSelection.hook}
+- 300–400 words
+- Open with a concrete scene, anecdote, or striking fact — NOT a generic introduction
+- Use specific names, places, or data points to make the content feel real
+- Appropriate for a ${level} grade English learner
+
+Question requirements:
+- 5 multiple choice questions, 4 options each
+- Mix of question types: detail recall, inference, vocabulary-in-context, main idea, author's purpose
+
+Output as JSON only:
+{ "article": string, "questions": [{ "id": number, "text": string, "options": string[], "correctOptionIndex": number }] }`;
+
+        // Use default temperature (1.0) for JSON output — higher values risk malformed JSON
         const testContent = await generateJSON(prompt, level);
+
+        saveRecentTopic(userId, topicSelection.category, topicSelection.topic, topicSelection.style, topicSelection.perspective)
+            .catch(err => console.error('Failed to save recent topic:', err));
+
         res.json(testContent);
     } catch (e: any) {
         console.error('Reading test generation error:', e);
