@@ -148,11 +148,26 @@ const PERSPECTIVES = [
     'a critical examination'
 ];
 
+// Narrative hook variations — specific angles that ground the article
+const CONTENT_HOOKS = [
+    'focusing on a surprising recent discovery',
+    'told through the story of one specific person or character',
+    'comparing two contrasting real-world examples',
+    'structured around a common misconception being corrected',
+    'set in a specific country or cultural context',
+    'framed as a problem and its creative solution',
+    'examining the historical contrast with the present day',
+    'built around a single striking statistic or fact',
+    'written as if the reader is experiencing it firsthand',
+    'exploring an unexpected or counterintuitive angle'
+];
+
 interface TopicSelection {
     category: string;
     topic: string;
     style: string;
     perspective: string;
+    hook: string;
 }
 
 /**
@@ -204,11 +219,15 @@ export async function selectRandomTopic(userId: string): Promise<TopicSelection>
         // Select random perspective
         const selectedPerspective = PERSPECTIVES[Math.floor(Math.random() * PERSPECTIVES.length)];
 
+        // Select random narrative hook
+        const selectedHook = CONTENT_HOOKS[Math.floor(Math.random() * CONTENT_HOOKS.length)];
+
         return {
             category: selectedCategory,
             topic: selectedTopic,
             style: selectedStyle,
-            perspective: selectedPerspective
+            perspective: selectedPerspective,
+            hook: selectedHook
         };
     } catch (error) {
         console.error('Error selecting random topic:', error);
@@ -221,7 +240,8 @@ export async function selectRandomTopic(userId: string): Promise<TopicSelection>
             category: randomCategory,
             topic: topics[Math.floor(Math.random() * topics.length)],
             style: WRITING_STYLES[Math.floor(Math.random() * WRITING_STYLES.length)],
-            perspective: PERSPECTIVES[Math.floor(Math.random() * PERSPECTIVES.length)]
+            perspective: PERSPECTIVES[Math.floor(Math.random() * PERSPECTIVES.length)],
+            hook: CONTENT_HOOKS[Math.floor(Math.random() * CONTENT_HOOKS.length)]
         };
     }
 }
