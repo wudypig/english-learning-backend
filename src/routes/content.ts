@@ -62,6 +62,7 @@ Requirements:
 
 Return only the article body. No title. No extra formatting.`;
 
+        // Higher temperature = more creative and diverse outputs
         const article = await generateContent(
             enhancedPrompt,
             level,
