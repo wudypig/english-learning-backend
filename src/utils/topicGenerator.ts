@@ -180,12 +180,14 @@ export async function selectRandomTopic(userId: string): Promise<TopicSelection>
             where: { userId },
             orderBy: { createdAt: 'desc' },
             take: 20,
-            select: { category: true, topic: true }
+            select: { category: true, topic: true, style: true, perspective: true }
         });
 
-        // Extract recently used categories and topics
+        // Extract recently used categories, topics, styles, and perspectives
         const usedCategories = new Set(recentTopics.map(rt => rt.category));
         const usedTopics = new Set(recentTopics.map(rt => rt.topic));
+        const usedStyles = new Set(recentTopics.map(rt => rt.style).filter(Boolean) as string[]);
+        const usedPerspectives = new Set(recentTopics.map(rt => rt.perspective).filter(Boolean) as string[]);
 
         // Get available categories (prefer unused ones)
         const allCategories = Object.keys(TOPIC_CATEGORIES);
@@ -213,11 +215,15 @@ export async function selectRandomTopic(userId: string): Promise<TopicSelection>
         // Select random topic
         const selectedTopic = availableTopics[Math.floor(Math.random() * availableTopics.length)];
 
-        // Select random writing style
-        const selectedStyle = WRITING_STYLES[Math.floor(Math.random() * WRITING_STYLES.length)];
+        // Select writing style, preferring unused ones
+        let availableStyles = WRITING_STYLES.filter(s => !usedStyles.has(s));
+        if (availableStyles.length === 0) availableStyles = WRITING_STYLES;
+        const selectedStyle = availableStyles[Math.floor(Math.random() * availableStyles.length)];
 
-        // Select random perspective
-        const selectedPerspective = PERSPECTIVES[Math.floor(Math.random() * PERSPECTIVES.length)];
+        // Select perspective, preferring unused ones
+        let availablePerspectives = PERSPECTIVES.filter(p => !usedPerspectives.has(p));
+        if (availablePerspectives.length === 0) availablePerspectives = PERSPECTIVES;
+        const selectedPerspective = availablePerspectives[Math.floor(Math.random() * availablePerspectives.length)];
 
         // Select random narrative hook
         const selectedHook = CONTENT_HOOKS[Math.floor(Math.random() * CONTENT_HOOKS.length)];
@@ -249,13 +255,15 @@ export async function selectRandomTopic(userId: string): Promise<TopicSelection>
 /**
  * Save generated topic to recent topics
  */
-export async function saveRecentTopic(userId: string, category: string, topic: string): Promise<void> {
+export async function saveRecentTopic(userId: string, category: string, topic: string, style: string, perspective: string): Promise<void> {
     try {
         await prisma.recentTopic.create({
             data: {
                 userId,
                 category,
-                topic
+                topic,
+                style,
+                perspective
             }
         });
     } catch (error) {
