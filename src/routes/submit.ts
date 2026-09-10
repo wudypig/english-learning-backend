@@ -6,10 +6,19 @@ import { checkAndDecrementLimit } from '../utils/limit';
 
 const router = Router();
 
+const ESSAY_DIMENSIONS = ['grammar', 'vocabulary', 'coherence', 'relevance', 'argumentation', 'mechanics'] as const;
+type EssayDimension = typeof ESSAY_DIMENSIONS[number];
+
+const toStringArray = (v: unknown): string[] => Array.isArray(v) ? v : [];
+
 // Submit Essay (Grades it)
 router.post('/essay', authenticateToken, async (req: AuthRequest, res) => {
     const { article, essay } = req.body;
     const userId = req.user!.userId;
+
+    if (typeof article !== 'string' || typeof essay !== 'string') {
+        return res.status(400).json({ error: 'article and essay are required' });
+    }
 
     const allowed = await checkAndDecrementLimit(userId, 'essay');
     if (!allowed) {
@@ -18,33 +27,75 @@ router.post('/essay', authenticateToken, async (req: AuthRequest, res) => {
 
     try {
         const prompt = `Grade this essay based on the following article.
-        Article: "${article}"
-        Essay: "${essay}"
-        
-        Provide:
-        1. A score from 1.0 to 10.0 (float).
-        2. Constructive feedback.
-        3. Hints for improvement.
-        
-        Output JSON: { "score": number, "feedback": string }
-        `;
+Article: "${article}"
+Essay: "${essay}"
+
+Score the essay on these 6 dimensions (each 1.0–10.0, one decimal place):
+1. grammar       — sentence structure, tense consistency, subject-verb agreement
+2. vocabulary    — word choice variety, appropriateness, avoiding repetition
+3. coherence     — logical flow, transitions between paragraphs, overall structure
+4. relevance     — how well the essay addresses the article/prompt
+5. argumentation — strength of points, use of examples and evidence
+6. mechanics     — spelling, punctuation, capitalization
+
+Also provide:
+- feedback: one constructive paragraph summarising the essay
+- 2–3 strengths (short phrases, e.g. "clear paragraph structure")
+- 2–3 weaknesses (short phrases, e.g. "inconsistent verb tense")
+- 2–3 improvement_tips (actionable sentences)
+
+Output JSON exactly:
+{
+  "scores": {
+    "grammar": number,
+    "vocabulary": number,
+    "coherence": number,
+    "relevance": number,
+    "argumentation": number,
+    "mechanics": number
+  },
+  "feedback": string,
+  "strengths": [string],
+  "weaknesses": [string],
+  "improvement_tips": [string]
+}`;
 
         const grading = await generateJSON(prompt);
 
-        // Save result
+        const dimScores = ESSAY_DIMENSIONS.map((d: EssayDimension) => {
+            const v = grading.scores?.[d];
+            if (typeof v !== 'number' || !Number.isFinite(v) || v < 1 || v > 10) {
+                throw new Error(`Invalid score for dimension: ${d}`);
+            }
+            return v;
+        });
+
+        const overall = parseFloat(
+            (dimScores.reduce((a, b) => a + b, 0) / ESSAY_DIMENSIONS.length).toFixed(2)
+        );
+
+        const metadata = {
+            scores: grading.scores,
+            strengths: toStringArray(grading.strengths),
+            weaknesses: toStringArray(grading.weaknesses),
+            improvement_tips: toStringArray(grading.improvement_tips),
+        };
+
         const record = await prisma.testRecord.create({
             data: {
                 userId,
                 type: 'essay',
                 content: article,
                 answers: essay,
-                score: grading.score,
-                feedback: grading.feedback
+                score: overall,
+                feedback: typeof grading.feedback === 'string' ? grading.feedback : null,
+                metadata: JSON.stringify(metadata),
             }
         });
 
         res.json({ record });
     } catch (e) {
+        console.error('[submit/essay]', e);
         res.status(500).json({ error: "Failed to grade essay" });
     }
 });
