@@ -49,7 +49,7 @@ gcloud run deploy ${SERVICE_NAME} \
   --region=${REGION} \
   --allow-unauthenticated \
   --add-cloudsql-instances=${SQL_INSTANCE} \
-  --set-secrets="JWT_SECRET=JWT_SECRET:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest,DATABASE_URL=DATABASE_URL:latest" \
+  --set-secrets="JWT_SECRET=JWT_SECRET:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest,DATABASE_URL=DATABASE_URL:latest,REFRESH_TOKEN_SECRET=REFRESH_TOKEN_SECRET:latest" \
   --port=8080 \
   --memory=512Mi \
   --cpu=1 \

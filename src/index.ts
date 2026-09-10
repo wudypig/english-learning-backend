@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
+import { prisma } from './utils/prisma';
 import contentRoutes from './routes/content';
 import submitRoutes from './routes/submit';
 import userRoutes from './routes/user';
@@ -10,6 +11,11 @@ import { requestLogger } from './middleware/logger';
 import { generalLimiter, authLimiter, contentLimiter } from './middleware/rateLimit';
 
 dotenv.config();
+
+if (!process.env.JWT_SECRET || !process.env.REFRESH_TOKEN_SECRET) {
+    console.error('FATAL: JWT_SECRET and REFRESH_TOKEN_SECRET must be set');
+    process.exit(1);
+}
 
 const app = express();
 const PORT = process.env.PORT || 3010; // Changed port to 3010 to avoid conflict with Vite (3000 often used) or I can set Vite to 5173 (default)
@@ -51,3 +57,8 @@ app.get('/', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
+
+// Hourly cleanup of expired refresh tokens
+setInterval(async () => {
+    await prisma.refreshToken.deleteMany({ where: { expiresAt: { lt: new Date() } } });
+}, 60 * 60 * 1000);

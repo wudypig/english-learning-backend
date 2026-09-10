@@ -15,7 +15,11 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
     if (!token) return res.sendStatus(401);
 
     jwt.verify(token, process.env.JWT_SECRET as string, (err: any, user: any) => {
-        if (err) return res.sendStatus(403);
+        if (err) {
+            return res.status(401).json({
+                error: err.name === 'TokenExpiredError' ? 'token_expired' : 'token_invalid',
+            });
+        }
         req.user = user as { userId: string; role: string };
         next();
     });
