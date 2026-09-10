@@ -50,6 +50,7 @@ model TestRecord {
   answers   String?  // JSON string for user answers (if reading) or essay content (if essay)
   score     Float
   feedback  String?  // For essay
+  metadata  String?  // JSON-encoded EssayMetadata; NULL for legacy records and all reading records
   createdAt DateTime @default(now())
 }
 
