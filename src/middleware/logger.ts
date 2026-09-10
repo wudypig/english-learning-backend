@@ -13,6 +13,8 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
         // Remove sensitive fields from logs
         if (sanitizedBody.password) sanitizedBody.password = '[REDACTED]';
         if (sanitizedBody.token) sanitizedBody.token = '[REDACTED]';
+        if (sanitizedBody.accessToken) sanitizedBody.accessToken = '[REDACTED]';
+        if (sanitizedBody.refreshToken) sanitizedBody.refreshToken = '[REDACTED]';
         console.log('  Body:', JSON.stringify(sanitizedBody, null, 2));
     }
 
