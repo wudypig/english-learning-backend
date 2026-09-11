@@ -21,12 +21,13 @@ model User {
   isActive       Boolean      @default(true)  // Account active status
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
-  
+
   testRecords     TestRecord[]
   usageLimits     UsageLimit[]
   recentTopics    RecentTopic[]
   privacySettings UserPrivacySettings?
   refreshTokens   RefreshToken[]
+  pendingContent  PendingContent[]
 }
 
 model UsageLimit {
@@ -79,6 +80,18 @@ model RefreshToken {
 
   @@index([userId])
   @@index([family])
+}
+
+model PendingContent {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // "essay" | "reading"
+  content   String
+  questions String?  // JSON string, reading only
+  createdAt DateTime @default(now())
+
+  @@unique([userId, type])
 }
 
 model UserPrivacySettings {

@@ -42,6 +42,15 @@ router.post('/essay/generate', authenticateToken, async (req: AuthRequest, res) 
 
         const level = user.difficultyLevel || '7th';
 
+        // Return existing pending content if available — no Gemini call needed
+        const existingPending = await prisma.pendingContent.findUnique({
+            where: { userId_type: { userId, type: 'essay' } }
+        });
+
+        if (existingPending) {
+            return res.json({ article: existingPending.content, resumed: true });
+        }
+
         // Clean up old topics (async, non-blocking)
         cleanupOldTopics().catch(err => console.error('Failed to cleanup old topics:', err));
 
@@ -71,6 +80,10 @@ Return only the article body. No title. No extra formatting.`;
 
         saveRecentTopic(userId, topicSelection.category, topicSelection.topic, topicSelection.style, topicSelection.perspective)
             .catch(err => console.error('Failed to save recent topic:', err));
+
+        await prisma.pendingContent.create({
+            data: { userId, type: 'essay', content: article }
+        });
 
         res.json({ article });
     } catch (e: any) {
@@ -139,6 +152,26 @@ router.post('/reading/generate', authenticateToken, async (req: AuthRequest, res
 
         const level = user.difficultyLevel || '7th';
 
+        // Return existing pending content if available — no Gemini call needed
+        const existingPending = await prisma.pendingContent.findUnique({
+            where: { userId_type: { userId, type: 'reading' } }
+        });
+
+        if (existingPending) {
+            if (!existingPending.questions) {
+                // Corrupt pending row — delete and fall through to regenerate
+                await prisma.pendingContent.delete({
+                    where: { userId_type: { userId, type: 'reading' } }
+                });
+            } else {
+                return res.json({
+                    article: existingPending.content,
+                    questions: JSON.parse(existingPending.questions),
+                    resumed: true
+                });
+            }
+        }
+
         cleanupOldTopics().catch(err => console.error('Failed to cleanup old topics:', err));
 
         const topicSelection = await selectRandomTopic(userId);
@@ -166,6 +199,15 @@ Output as JSON only:
 
         saveRecentTopic(userId, topicSelection.category, topicSelection.topic, topicSelection.style, topicSelection.perspective)
             .catch(err => console.error('Failed to save recent topic:', err));
+
+        await prisma.pendingContent.create({
+            data: {
+                userId,
+                type: 'reading',
+                content: testContent.article,
+                questions: JSON.stringify(testContent.questions)
+            }
+        });
 
         res.json(testContent);
     } catch (e: any) {
