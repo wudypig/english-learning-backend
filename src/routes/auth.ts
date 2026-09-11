@@ -8,6 +8,7 @@ import {
     hashToken,
     REFRESH_TOKEN_TTL_MS,
 } from '../utils/tokenUtils';
+import { sendVerificationEmail } from '../services/emailService';
 
 const router = Router();
 
@@ -46,7 +47,22 @@ router.post('/register', async (req, res) => {
             },
         });
 
-        res.json({ message: 'User created', userId: user.id });
+        const rawToken = crypto.randomBytes(32).toString('hex');
+        const verificationToken = hashToken(rawToken);
+        const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { verificationToken, verificationTokenExpiry },
+        });
+
+        try {
+            await sendVerificationEmail(email, rawToken);
+        } catch (emailError) {
+            console.error('Failed to send verification email:', emailError);
+        }
+
+        res.json({ message: 'Account created. Please check your email to verify your account.' });
     } catch (error) {
         res.status(400).json({ error: 'User already exists or invalid data' });
     }
