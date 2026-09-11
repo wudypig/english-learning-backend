@@ -13,11 +13,21 @@ const toStringArray = (v: unknown): string[] => Array.isArray(v) ? v : [];
 
 // Submit Essay (Grades it)
 router.post('/essay', authenticateToken, async (req: AuthRequest, res) => {
-    const { article, essay } = req.body;
+    const { essay } = req.body;
     const userId = req.user!.userId;
 
-    if (typeof article !== 'string' || typeof essay !== 'string') {
-        return res.status(400).json({ error: 'article and essay are required' });
+    const pending = await prisma.pendingContent.findUnique({
+        where: { userId_type: { userId, type: 'essay' } }
+    });
+
+    if (!pending) {
+        return res.status(400).json({ error: 'No pending essay found. Please generate content first.' });
+    }
+
+    const article = pending.content;
+
+    if (typeof essay !== 'string') {
+        return res.status(400).json({ error: 'essay is required' });
     }
 
     const allowed = await checkAndDecrementLimit(userId, 'essay');
@@ -81,17 +91,22 @@ Output JSON exactly:
             improvement_tips: toStringArray(grading.improvement_tips),
         };
 
-        const record = await prisma.testRecord.create({
-            data: {
-                userId,
-                type: 'essay',
-                content: article,
-                answers: essay,
-                score: overall,
-                feedback: typeof grading.feedback === 'string' ? grading.feedback : null,
-                metadata: JSON.stringify(metadata),
-            }
-        });
+        const [, record] = await prisma.$transaction([
+            prisma.pendingContent.delete({
+                where: { userId_type: { userId, type: 'essay' } }
+            }),
+            prisma.testRecord.create({
+                data: {
+                    userId,
+                    type: 'essay',
+                    content: article,
+                    answers: essay,
+                    score: overall,
+                    feedback: typeof grading.feedback === 'string' ? grading.feedback : null,
+                    metadata: JSON.stringify(metadata),
+                }
+            })
+        ]);
 
         res.json({ record });
     } catch (e) {
@@ -102,8 +117,19 @@ Output JSON exactly:
 
 // Submit Reading Result
 router.post('/reading', authenticateToken, async (req: AuthRequest, res) => {
-    const { article, questions, answers, score } = req.body;
+    const { answers, score } = req.body;
     const userId = req.user!.userId;
+
+    const pending = await prisma.pendingContent.findUnique({
+        where: { userId_type: { userId, type: 'reading' } }
+    });
+
+    if (!pending) {
+        return res.status(400).json({ error: 'No pending reading test found. Please generate content first.' });
+    }
+
+    const article = pending.content;
+    const questions = pending.questions;
 
     const allowed = await checkAndDecrementLimit(userId, 'reading');
     if (!allowed) {
@@ -111,17 +137,21 @@ router.post('/reading', authenticateToken, async (req: AuthRequest, res) => {
     }
 
     try {
-        // Save result
-        const record = await prisma.testRecord.create({
-            data: {
-                userId,
-                type: 'reading',
-                content: article,
-                questions: JSON.stringify(questions),
-                answers: JSON.stringify(answers),
-                score: score,
-            }
-        });
+        const [, record] = await prisma.$transaction([
+            prisma.pendingContent.delete({
+                where: { userId_type: { userId, type: 'reading' } }
+            }),
+            prisma.testRecord.create({
+                data: {
+                    userId,
+                    type: 'reading',
+                    content: article,
+                    questions: questions,
+                    answers: JSON.stringify(answers),
+                    score: score,
+                }
+            })
+        ]);
 
         res.json({ record });
     } catch (e) {
