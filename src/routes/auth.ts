@@ -116,12 +116,12 @@ router.post('/admin/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        if (!user.emailVerified) {
-            return res.status(403).json({ error: 'email_not_verified' });
-        }
-
         if (user.role !== 'admin') {
             return res.status(403).json({ error: 'Access denied. Admin credentials required.' });
+        }
+
+        if (!user.emailVerified) {
+            return res.status(403).json({ error: 'email_not_verified' });
         }
 
         if (!user.isActive) {
@@ -180,6 +180,32 @@ router.post('/refresh', async (req, res) => {
     res.json({ accessToken, refreshToken: newRefreshToken });
 });
 
+router.post('/resend-verification', async (req, res) => {
+    const { email } = req.body;
+    const GENERIC_RESPONSE = { message: 'If that email has a pending verification, a new link has been sent.' };
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user || user.emailVerified) {
+        return res.json(GENERIC_RESPONSE);
+    }
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const verificationToken = hashToken(rawToken);
+    const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    try {
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { verificationToken, verificationTokenExpiry },
+        });
+        await sendVerificationEmail(email, rawToken);
+    } catch (err) {
+        console.error('Failed to resend verification email:', err);
+    }
+
+    res.json(GENERIC_RESPONSE);
+});
+
 router.get('/verify-email', async (req, res) => {
     const { token } = req.query;
     if (!token || typeof token !== 'string') {
@@ -187,21 +213,17 @@ router.get('/verify-email', async (req, res) => {
     }
 
     const verificationToken = hashToken(token);
-    const user = await prisma.user.findFirst({
+    const { count } = await prisma.user.updateMany({
         where: {
             verificationToken,
             verificationTokenExpiry: { gt: new Date() },
         },
-    });
-
-    if (!user) {
-        return res.status(400).json({ error: 'token_invalid' });
-    }
-
-    await prisma.user.update({
-        where: { id: user.id },
         data: { emailVerified: true, verificationToken: null, verificationTokenExpiry: null },
     });
+
+    if (count === 0) {
+        return res.status(400).json({ error: 'token_invalid' });
+    }
 
     res.json({ message: 'Email verified. You can now log in.' });
 });
