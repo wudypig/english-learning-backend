@@ -180,6 +180,32 @@ router.post('/refresh', async (req, res) => {
     res.json({ accessToken, refreshToken: newRefreshToken });
 });
 
+router.get('/verify-email', async (req, res) => {
+    const { token } = req.query;
+    if (!token || typeof token !== 'string') {
+        return res.status(400).json({ error: 'token_missing' });
+    }
+
+    const verificationToken = hashToken(token);
+    const user = await prisma.user.findFirst({
+        where: {
+            verificationToken,
+            verificationTokenExpiry: { gt: new Date() },
+        },
+    });
+
+    if (!user) {
+        return res.status(400).json({ error: 'token_invalid' });
+    }
+
+    await prisma.user.update({
+        where: { id: user.id },
+        data: { emailVerified: true, verificationToken: null, verificationTokenExpiry: null },
+    });
+
+    res.json({ message: 'Email verified. You can now log in.' });
+});
+
 router.post('/logout', async (req, res) => {
     const { refreshToken } = req.body;
     if (refreshToken) {
