@@ -18,7 +18,10 @@ model User {
   avatar         String?
   role           String       @default("user") // "user" or "admin"
   difficultyLevel String      @default("7th") // "7th", "8th", "9th", "10th", "11th", "12th"
-  isActive       Boolean      @default(true)  // Account active status
+  isActive                Boolean   @default(true)  // Account active status
+  emailVerified           Boolean   @default(false)
+  verificationToken       String?   @unique
+  verificationTokenExpiry DateTime?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
