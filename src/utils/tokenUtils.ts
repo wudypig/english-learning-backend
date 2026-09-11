@@ -2,6 +2,16 @@ import crypto from 'crypto';
 import jwt, { SignOptions } from 'jsonwebtoken';
 
 export const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+export const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+export const generateVerificationToken = (): { rawToken: string; verificationToken: string; verificationTokenExpiry: Date } => {
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    return {
+        rawToken,
+        verificationToken: hashToken(rawToken),
+        verificationTokenExpiry: new Date(Date.now() + VERIFICATION_TOKEN_TTL_MS),
+    };
+};
 
 export const generateAccessToken = (userId: string, role: string): string => {
     const options: SignOptions = {
