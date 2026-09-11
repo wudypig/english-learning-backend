@@ -81,6 +81,10 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
+        if (!user.emailVerified) {
+            return res.status(403).json({ error: 'email_not_verified' });
+        }
+
         const family = crypto.randomUUID();
         const accessToken = generateAccessToken(user.id, user.role);
         const refreshToken = await issueRefreshToken(user.id, family);
@@ -100,7 +104,7 @@ router.post('/admin/login', async (req, res) => {
     try {
         const user = await prisma.user.findUnique({
             where: { email },
-            select: { id: true, email: true, password: true, nickname: true, role: true, isActive: true },
+            select: { id: true, email: true, password: true, nickname: true, role: true, isActive: true, emailVerified: true },
         });
 
         if (!user) {
@@ -110,6 +114,10 @@ router.post('/admin/login', async (req, res) => {
         const validPassword = await bcrypt.compare(password, user.password);
         if (!validPassword) {
             return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        if (!user.emailVerified) {
+            return res.status(403).json({ error: 'email_not_verified' });
         }
 
         if (user.role !== 'admin') {
