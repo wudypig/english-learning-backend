@@ -2,10 +2,7 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const FROM_ADDRESS =
-  process.env.NODE_ENV === 'production'
-    ? 'no-reply@writenest.net'
-    : 'onboarding@resend.dev';
+const FROM_ADDRESS = process.env.RESEND_FROM_ADDRESS ?? 'onboarding@resend.dev';
 
 export const sendVerificationEmail = async (to: string, rawToken: string): Promise<void> => {
   const verificationUrl = `${process.env.CLIENT_URL}/verify-email?token=${rawToken}`;
