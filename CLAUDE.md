@@ -41,8 +41,9 @@ Applied in order:
 5. `generalLimiter` (100 req/15min) applied globally
 
 Route-specific limiters applied at mount:
-- `/auth` + `authLimiter` (5 req/15min)
 - `/content` + `contentLimiter` (10 req/hour)
+
+`authLimiter` (5 req/15min) is applied per-route inside `routes/auth.ts` on `POST /register`, `POST /login`, `POST /admin/login`, and `POST /resend-verification`. Other auth routes (`verify-email`, `refresh`, `logout`) use only the `generalLimiter`.
 
 ### File Map
 

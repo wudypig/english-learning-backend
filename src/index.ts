@@ -8,7 +8,7 @@ import submitRoutes from './routes/submit';
 import userRoutes from './routes/user';
 import adminRoutes from './routes/admin';
 import { requestLogger } from './middleware/logger';
-import { generalLimiter, authLimiter, contentLimiter } from './middleware/rateLimit';
+import { generalLimiter, contentLimiter } from './middleware/rateLimit';
 
 dotenv.config();
 
@@ -44,7 +44,8 @@ app.use(requestLogger); // Log all API requests
 app.use(generalLimiter); // Apply general rate limiting to all routes
 
 // Routes with specific rate limiters
-app.use('/auth', authLimiter, authRoutes);
+// authLimiter is applied per-route inside auth.ts (login/register only)
+app.use('/auth', authRoutes);
 app.use('/content', contentLimiter, contentRoutes);
 app.use('/submit', submitRoutes);
 app.use('/user', userRoutes);
