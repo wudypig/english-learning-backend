@@ -5,10 +5,12 @@ import bcrypt from 'bcryptjs';
 import {
     generateAccessToken,
     generateRefreshToken,
+    generateVerificationToken,
     hashToken,
     REFRESH_TOKEN_TTL_MS,
 } from '../utils/tokenUtils';
 import { sendVerificationEmail } from '../services/emailService';
+import { authLimiter } from '../middleware/rateLimit';
 
 const router = Router();
 
@@ -28,16 +30,20 @@ const issueRefreshToken = async (userId: string, family: string): Promise<string
     return raw;
 };
 
-router.post('/register', async (req, res) => {
+router.post('/register', authLimiter, async (req, res) => {
     const { email, password, nickname } = req.body;
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const user = await prisma.user.create({
+        const { rawToken, verificationToken, verificationTokenExpiry } = generateVerificationToken();
+
+        await prisma.user.create({
             data: {
                 email,
                 password: hashedPassword,
                 nickname: nickname || email.split('@')[0],
+                verificationToken,
+                verificationTokenExpiry,
                 usageLimits: {
                     create: [
                         { testType: 'essay', remainingAttempts: 1 },
@@ -45,15 +51,6 @@ router.post('/register', async (req, res) => {
                     ],
                 },
             },
-        });
-
-        const rawToken = crypto.randomBytes(32).toString('hex');
-        const verificationToken = hashToken(rawToken);
-        const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-        await prisma.user.update({
-            where: { id: user.id },
-            data: { verificationToken, verificationTokenExpiry },
         });
 
         try {
@@ -68,7 +65,7 @@ router.post('/register', async (req, res) => {
     }
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, async (req, res) => {
     const { email, password } = req.body;
     try {
         const user = await prisma.user.findUnique({ where: { email } });
@@ -99,7 +96,7 @@ router.post('/login', async (req, res) => {
     }
 });
 
-router.post('/admin/login', async (req, res) => {
+router.post('/admin/login', authLimiter, async (req, res) => {
     const { email, password } = req.body;
     try {
         const user = await prisma.user.findUnique({
@@ -107,17 +104,13 @@ router.post('/admin/login', async (req, res) => {
             select: { id: true, email: true, password: true, nickname: true, role: true, isActive: true, emailVerified: true },
         });
 
-        if (!user) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+        if (!user || user.role !== 'admin') {
+            return res.status(403).json({ error: 'Access denied. Admin credentials required.' });
         }
 
         const validPassword = await bcrypt.compare(password, user.password);
         if (!validPassword) {
             return res.status(401).json({ error: 'Invalid credentials' });
-        }
-
-        if (user.role !== 'admin') {
-            return res.status(403).json({ error: 'Access denied. Admin credentials required.' });
         }
 
         if (!user.emailVerified) {
@@ -180,7 +173,7 @@ router.post('/refresh', async (req, res) => {
     res.json({ accessToken, refreshToken: newRefreshToken });
 });
 
-router.post('/resend-verification', async (req, res) => {
+router.post('/resend-verification', authLimiter, async (req, res) => {
     const { email } = req.body;
     const GENERIC_RESPONSE = { message: 'If that email has a pending verification, a new link has been sent.' };
 
@@ -189,9 +182,7 @@ router.post('/resend-verification', async (req, res) => {
         return res.json(GENERIC_RESPONSE);
     }
 
-    const rawToken = crypto.randomBytes(32).toString('hex');
-    const verificationToken = hashToken(rawToken);
-    const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const { rawToken, verificationToken, verificationTokenExpiry } = generateVerificationToken();
 
     try {
         await prisma.user.update({
@@ -213,17 +204,19 @@ router.get('/verify-email', async (req, res) => {
     }
 
     const verificationToken = hashToken(token);
-    const { count } = await prisma.user.updateMany({
-        where: {
-            verificationToken,
-            verificationTokenExpiry: { gt: new Date() },
-        },
-        data: { emailVerified: true, verificationToken: null, verificationTokenExpiry: null },
-    });
+    const user = await prisma.user.findUnique({ where: { verificationToken }, select: { id: true, verificationTokenExpiry: true } });
 
-    if (count === 0) {
+    if (!user) {
         return res.status(400).json({ error: 'token_invalid' });
     }
+    if (!user.verificationTokenExpiry || user.verificationTokenExpiry <= new Date()) {
+        return res.status(400).json({ error: 'token_expired' });
+    }
+
+    await prisma.user.update({
+        where: { id: user.id },
+        data: { emailVerified: true, verificationToken: null, verificationTokenExpiry: null },
+    });
 
     res.json({ message: 'Email verified. You can now log in.' });
 });
